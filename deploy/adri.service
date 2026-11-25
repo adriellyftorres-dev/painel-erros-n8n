@@ -1,0 +1,15 @@
+[Unit]
+Description=Painel de Erros N8N
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/erros-n8n
+EnvironmentFile=/opt/erros-n8n/.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+User=www-data
+
+[Install]
+WantedBy=multi-user.target

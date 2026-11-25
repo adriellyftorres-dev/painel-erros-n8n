@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Erros N8N</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #08060f;
+    --panel: #140f22;
+    --panel-2: #1a132c;
+    --panel-3: #221a38;
+    --line: #302450;
+    --line-soft: #251c3d;
+    --text: #f1ecfb;
+    --muted: #a595c9;
+    --muted-2: #7d6ba6;
+    --accent: #a855f7;
+    --accent-2: #7c3aed;
+    --accent-soft: #c084fc;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --err: #fb7185;
+    --info: #60a5fa;
+    --gray: #94a3b8;
+    --radius: 14px;
+    --shadow: 0 10px 30px -12px rgba(0, 0, 0, .8);
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0; min-height: 100vh; color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(124, 58, 237, .28), transparent 60%),
+      radial-gradient(700px 420px at 92% 4%, rgba(168, 85, 247, .18), transparent 55%),
+      linear-gradient(180deg, #0c0916 0%, var(--bg) 45%, #06040c 100%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(168, 85, 247, .35); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent-2); background-clip: content-box; }
+
+  header {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 14px 22px; position: sticky; top: 0; z-index: 10;
+    background: linear-gradient(180deg, rgba(10, 7, 18, .94), rgba(10, 7, 18, .74));
+    backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--line-soft);
+    box-shadow: 0 12px 30px -20px #000;
+  }
+  h1 {
+    font-size: 17px; font-weight: 700; letter-spacing: -.2px; margin: 0 auto 0 0;
+    display: flex; align-items: center; gap: 9px;
+  }
+  h1 svg { color: var(--accent); }
+  h1 span {
+    background: linear-gradient(100deg, #f5f0ff 10%, var(--accent-soft) 55%, var(--accent-2) 95%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 9px; padding: 14px 22px 4px; }
+  input, select, textarea, button {
+    font: inherit; color: var(--text);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    transition: border-color .15s, box-shadow .15s, background .15s, transform .1s;
+  }
+  input, select { padding: 9px 12px; }
+  input::placeholder, textarea::placeholder { color: var(--muted-2); }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, .18);
+  }
+  #q { flex: 1; min-width: 170px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px; font-size: 12.5px;
+    color: var(--muted); background: rgba(168, 85, 247, .07);
+    border: 1px solid var(--line);
+  }
+  .pill b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+  button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 9px 14px; cursor: pointer; font-weight: 550; font-size: 13.5px;
+    background: var(--panel-2); white-space: nowrap;
+  }
+  button svg { flex: none; }
+  button:hover:not(:disabled) { border-color: var(--accent-2); background: var(--panel-3); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button.primary {
+    border: 1px solid rgba(192, 132, 252, .5); color: #fff;
+    background: linear-gradient(135deg, #8b3ff0, #6d28d9);
+    box-shadow: 0 6px 20px -8px rgba(139, 63, 240, .8);
+  }
+  button.primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #9d55ff, #7c3aed);
+    box-shadow: 0 8px 26px -8px rgba(168, 85, 247, .9);
+  }
+  button.ghost { background: transparent; }
+  button.ghost:hover:not(:disabled) { background: rgba(168, 85, 247, .1); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.sm { padding: 7px 11px; font-size: 12.5px; }
+
+  /* ---------- o quadro ---------- */
+  .board {
+    display: grid; grid-template-columns: repeat(5, minmax(272px, 1fr));
+    gap: 13px; padding: 12px 22px 40px;
+    overflow-x: auto; align-items: stretch;
+    min-height: calc(100vh - 190px);
+  }
+  .col {
+    background: linear-gradient(180deg, rgba(26, 19, 44, .72), rgba(14, 10, 24, .72));
+    border: 1px solid var(--line-soft); border-radius: 18px;
+    display: flex; flex-direction: column; min-width: 0;
+    max-height: calc(100vh - 176px); box-shadow: var(--shadow);
+  }
+  .col[data-status="pending"] { border-top: 2px solid rgba(251, 113, 133, .5); }
+  .col[data-status="analyzing"] { border-top: 2px solid rgba(251, 191, 36, .5); }
+  .col[data-status="fixed"] { border-top: 2px solid rgba(96, 165, 250, .5); }
+  .col[data-status="resolved"] { border-top: 2px solid rgba(52, 211, 153, .5); }
+  .col[data-status="not_fixed"] { border-top: 2px solid rgba(148, 163, 184, .45); }
+
+  .col h2 {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--muted); margin: 0; padding: 13px 16px 11px;
+    position: sticky; top: 0; z-index: 3;
+    background: linear-gradient(180deg, #170f29 78%, rgba(23, 15, 41, 0));
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .col h2 .n {
+    margin-left: auto; color: var(--text); background: rgba(168, 85, 247, .14);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 1px 9px; font-size: 11px; letter-spacing: 0;
+  }
+  .stack {
+    display: grid; gap: 11px; padding: 0 12px 14px;
+    overflow-y: auto; overscroll-behavior: contain; flex: 1;
+  }
+
+  /* ---------- card ---------- */
+  .card {
+    position: relative; display: flex; flex-direction: column;
+    background: linear-gradient(160deg, var(--panel-2) 0%, var(--panel) 100%);
+    border: 1px solid var(--line-soft); border-radius: var(--radius);
+    padding: 12px 13px 12px 15px;
+    box-shadow: 0 6px 18px -14px #000;
+    transition: border-color .15s, box-shadow .2s, transform .15s;
+  }
+  .card::before {
+    content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; border-radius: 3px 0 0 3px;
+    background: var(--err);
+  }
+  .col[data-status="analyzing"] .card::before { background: var(--warn); }
+  .col[data-status="fixed"] .card::before { background: var(--info); }
+  .col[data-status="resolved"] .card::before { background: var(--ok); }
+  .col[data-status="not_fixed"] .card::before { background: var(--gray); }
+  .card:hover { border-color: var(--line); box-shadow: 0 12px 26px -18px #000; }
+  .card.salvo { animation: salvou .9s ease; }
+  @keyframes salvou {
+    0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, .7); border-color: var(--accent); }
+    100% { box-shadow: 0 6px 18px -14px #000; }
+  }
+  .card.entrando { animation: entrou .35s ease; }
+  @keyframes entrou {
+    from { opacity: 0; transform: translateY(-6px) scale(.985); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .top { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; font-size: 12px; color: var(--muted); }
+  .inst {
+    background: rgba(168, 85, 247, .13); color: var(--accent-soft);
+    border: 1px solid rgba(168, 85, 247, .28);
+    padding: 1px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 550;
+  }
+  .when { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted-2); font-size: 11.5px; }
+  .urg { padding: 1px 8px; border-radius: 6px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+  .urg.alta { color: #ffd7dd; background: rgba(251, 113, 133, .18); border: 1px solid rgba(251, 113, 133, .45); }
+  .urg.media { color: #ffe9b8; background: rgba(251, 191, 36, .15); border: 1px solid rgba(251, 191, 36, .4); }
+  .urg.baixa { color: #b7c8d9; background: rgba(148, 163, 184, .13); border: 1px solid rgba(148, 163, 184, .35); }
+
+  .wf { font-weight: 650; margin: 8px 0 2px; font-size: 13.5px; line-height: 1.35; }
+  .sub { font-size: 11.5px; color: var(--muted); }
+  .err {
+    margin: 8px 0 0; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 12px;
+    color: #ffc9d1;
+    background: linear-gradient(180deg, rgba(251, 113, 133, .1), rgba(251, 113, 133, .04));
+    border: 1px solid rgba(251, 113, 133, .22); border-left: 2px solid var(--err);
+    padding: 8px 10px; border-radius: 9px; word-break: break-word;
+  }
+  .err.blank { color: var(--muted-2); font-style: italic; border: 1px dashed var(--line); background: transparent; }
+
+  .ia {
+    margin: 10px 0 0; padding: 10px 11px; border-radius: 10px; font-size: 12.5px;
+    white-space: pre-wrap; line-height: 1.6;
+    background: linear-gradient(160deg, rgba(124, 58, 237, .17), rgba(168, 85, 247, .05));
+    border: 1px solid rgba(168, 85, 247, .28);
+  }
+  .ia .lbl {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.1px;
+    color: var(--accent-soft); margin-bottom: 6px;
+  }
+  .ia strong { color: #e9d5ff; font-weight: 700; }
+  .ia .body.clamp {
+    max-height: 7.2em; overflow: hidden;
+    -webkit-mask-image: linear-gradient(180deg, #000 62%, transparent);
+    mask-image: linear-gradient(180deg, #000 62%, transparent);
+  }
+  .ia.pending {
+    background: rgba(255, 255, 255, .02); border: 1px dashed var(--line);
+    color: var(--muted-2); padding: 8px 10px;
+  }
+  .link-mini {
+    display: inline-flex; align-items: center; gap: 4px; margin-top: 8px;
+    font-size: 11.5px; color: var(--accent-soft); text-decoration: none;
+  }
+  .link-mini:hover { color: #fff; }
+
+  .fulltext {
+    margin: 9px 0 0; white-space: pre-wrap; word-break: break-word;
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 10.5px;
+    color: var(--muted-2); background: rgba(0, 0, 0, .25);
+    border: 1px solid var(--line-soft); border-radius: 9px; padding: 8px 10px;
+  }
+  .statusrow { margin-top: 10px; }
+  .status-sel { width: 100%; padding: 8px 10px; font-size: 12.5px; font-weight: 600; background: var(--panel-3); }
+  textarea {
+    width: 100%; margin-top: 8px; padding: 9px 11px; resize: vertical; min-height: 62px;
+    font-size: 13px; line-height: 1.5;
+  }
+  .tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  .tools button { background: var(--panel-3); }
+  .salvar { margin-top: 9px; width: 100%; }
+  .doneinfo { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ok); margin-top: 9px; }
+  .dica {
+    margin-top: 8px; padding: 6px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 600;
+    color: #ffe9b8; background: rgba(251, 191, 36, .12); border: 1px solid rgba(251, 191, 36, .35);
+  }
+  .hist { margin-top: 8px; }
+  summary {
+    cursor: pointer; font-size: 11.5px; color: var(--muted-2); width: fit-content;
+    list-style: none; padding: 2px 0;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸ "; color: var(--accent-2); }
+  details[open] summary::before { content: "▾ "; }
+  summary:hover { color: var(--accent-soft); }
+  .text {
+    margin: 7px 0 0; white-space: pre-wrap; word-break: break-word;
+    font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--muted);
+    background: rgba(0, 0, 0, .3); border: 1px solid var(--line-soft);
+    border-radius: 9px; padding: 8px 10px;
+  }
+  .empty { color: var(--muted-2); padding: 22px 8px; text-align: center; font-size: 12.5px; }
+
+  /* ---------- gravação ---------- */
+  .rec {
+    display: none; margin-top: 8px; padding: 9px 11px;
+    background: rgba(239, 68, 68, .08); border: 1px solid rgba(239, 68, 68, .35);
+    border-radius: 10px; font-size: 12.5px;
+  }
+  .rec.on { display: block; animation: entrou .25s ease; }
+  .rec-top { display: flex; align-items: center; gap: 8px; color: #ffc9d1; font-size: 11.5px; font-weight: 600; }
+  .ondas { display: flex; align-items: flex-end; gap: 2px; height: 16px; }
+  .ondas i { width: 3px; background: #ef4444; border-radius: 2px; animation: onda .9s ease-in-out infinite; }
+  .ondas i:nth-child(1) { height: 6px; animation-delay: 0s; }
+  .ondas i:nth-child(2) { height: 12px; animation-delay: .12s; }
+  .ondas i:nth-child(3) { height: 16px; animation-delay: .24s; }
+  .ondas i:nth-child(4) { height: 10px; animation-delay: .36s; }
+  .ondas i:nth-child(5) { height: 7px; animation-delay: .48s; }
+  @keyframes onda { 0%, 100% { transform: scaleY(.4); } 50% { transform: scaleY(1); } }
+  .rec .live {
+    margin-top: 7px; color: var(--text); font-size: 12.5px; line-height: 1.5;
+    max-height: 96px; overflow-y: auto;
+  }
+  .rec .live .parcial { color: var(--muted-2); font-style: italic; }
+  .mic-on {
+    color: #fff !important; background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
+    border-color: rgba(248, 113, 113, .7) !important;
+    animation: pulso 1.2s ease-in-out infinite;
+  }
+  @keyframes pulso {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .55); }
+    50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  }
+  .spin { animation: girar .9s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+
+  /* ---------- modal ---------- */
+  .overlay {
+    position: fixed; inset: 0; z-index: 60; display: none;
+    align-items: center; justify-content: center; padding: 18px;
+    background: rgba(6, 4, 12, .8); backdrop-filter: blur(6px);
+  }
+  .overlay.aberto { display: flex; }
+  .modal {
+    width: min(780px, 100%); max-height: 90vh; display: flex; flex-direction: column;
+    background: linear-gradient(180deg, #191130, #120d1f);
+    border: 1px solid var(--line); border-radius: 18px;
+    box-shadow: 0 30px 80px -30px #000;
+    animation: entrou .22s ease;
+  }
+  .modal header {
+    position: static; display: flex; gap: 10px; align-items: center;
+    padding: 13px 16px; background: none; backdrop-filter: none;
+    border-bottom: 1px solid var(--line-soft); box-shadow: none;
+  }
+  .modal h3 { margin: 0 auto 0 0; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+  .modal .corpo { padding: 13px 16px; overflow: auto; }
+  .modal textarea {
+    width: 100%; min-height: 46vh; resize: vertical; margin: 0;
+    font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; line-height: 1.6;
+    background: #0d0a16;
+  }
+  .modal footer {
+    display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px;
+    border-top: 1px solid var(--line-soft); align-items: center;
+  }
+  .modal footer input[type="date"] { padding: 8px 10px; }
+
+  /* ---------- aviso ---------- */
+  #toasts {
+    position: fixed; right: 18px; bottom: 18px; z-index: 80;
+    display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+  }
+  .toast {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-radius: 11px; font-size: 13px; font-weight: 600;
+    background: linear-gradient(135deg, #1d3b2f, #14261f); color: #d8ffe9;
+    border: 1px solid rgba(52, 211, 153, .45);
+    box-shadow: 0 12px 30px -14px #000;
+    animation: sobe .25s ease;
+  }
+  .toast.erro { background: linear-gradient(135deg, #3b1d24, #26141a); color: #ffdbe2; border-color: rgba(251, 113, 133, .5); }
+  @keyframes sobe { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 1180px) {
+    .board { grid-template-columns: repeat(5, minmax(268px, 78vw)); padding-bottom: 26px; }
+  }
+  @media (max-width: 760px) {
+    header { padding: 12px 14px; }
+    h1 { width: 100%; }
+    .filters { flex-direction: column; padding: 12px 14px 2px; }
+    .filters input, .filters select { width: 100%; }
+    .board { grid-template-columns: repeat(5, 86vw); padding: 8px 14px 20px; scroll-snap-type: x mandatory; }
+    .col { max-height: none; scroll-snap-align: center; }
+    .stack { overflow: visible; }
+    .when { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/><path d="M12 17h.01"/></svg>
+    <span>Erros N8N</span>
+  </h1>
+  <button class="primary" id="analyzeAll"></button>
+  <button class="primary" id="abrirRelatorio"></button>
+  <button class="ghost" id="reload"></button>
+</header>
+<div class="filters" style="padding-top:0">
+  <span class="pill">Abertos <b id="nPending">0</b></span>
+  <span class="pill">Fechados <b id="nDone">0</b></span>
+</div>
+
+<div class="filters">
+  <input id="q" placeholder="Buscar por workflow, nó, erro ou instância…">
+  <select id="instance"><option value="">Todas as instâncias</option></select>
+  <select id="urgency">
+    <option value="">Toda urgência</option>
+    <option value="alta">Alta</option>
+    <option value="media">Média</option>
+    <option value="baixa">Baixa</option>
+    <option value="sem">Sem análise</option>
+  </select>
+  <select id="order">
+    <option value="recent">Mais recentes</option>
+    <option value="urgency">Urgência primeiro</option>
+  </select>
+</div>
+
+<div class="board" id="board"></div>
+
+<div class="overlay" id="overlayRelatorio">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloRelatorio">
+    <header>
+      <h3 id="tituloRelatorio">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+        Relatório diário
+      </h3>
+      <button class="ghost sm" id="fecharRelatorio"></button>
+    </header>
+    <div class="corpo">
+      <textarea id="textoRelatorio" spellcheck="false" aria-label="Relatório do dia"></textarea>
+    </div>
+    <footer>
+      <input type="date" id="dataRelatorio">
+      <button class="primary" id="copiarRelatorio"></button>
+      <button class="ghost" id="atualizarRelatorio"></button>
+    </footer>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let items = [];
+
+// ---------- ícones ----------
+const PATHS = {
+  mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>',
+  micOff: '<path d="M2 2l20 20"/><path d="M9 9v3a3 3 0 0 0 5.1 2.1"/><path d="M15 10V5a3 3 0 0 0-5.9-.7"/><path d="M19 10v2a7 7 0 0 1-2 4.9"/><path d="M12 19v3"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  sparkle: '<path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>',
+  close: '<path d="M18 6 6 18M6 6l12 12"/>',
+  save: '<path d="M20 6 9 17l-5-5"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/>',
+  external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+};
+function icone(nome, tam = 15) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  el.setAttribute("width", tam);
+  el.setAttribute("height", tam);
+  el.setAttribute("viewBox", "0 0 24 24");
+  el.setAttribute("fill", "none");
+  el.setAttribute("stroke", "currentColor");
+  el.setAttribute("stroke-width", "2");
+  el.setAttribute("stroke-linecap", "round");
+  el.setAttribute("stroke-linejoin", "round");
+  el.innerHTML = PATHS[nome] || "";
+  return el;
+}
+function rotulo(botao, nomeIcone, texto) {
+  botao.replaceChildren(icone(nomeIcone), document.createTextNode(texto));
+}
+
+// ---------- status ----------
+const STATUS = [
+  { id: "pending", nome: "Pendente", cor: "#fb7185" },
+  { id: "analyzing", nome: "Em análise", cor: "#fbbf24" },
+  { id: "fixed", nome: "Corrigido", cor: "#60a5fa" },
+  { id: "resolved", nome: "Resolvido", cor: "#34d399" },
+  { id: "not_fixed", nome: "Não corrigido", cor: "#94a3b8" },
+];
+const STATUS_IDS = STATUS.map((s) => s.id);
+const statusDe = (i) => (STATUS_IDS.includes(i.status) ? i.status : i.done ? "resolved" : "pending");
+
+// ---------- utilidades ----------
+const fmt = (iso) => new Date(iso).toLocaleString("pt-BR", {
+  day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit"
+});
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+const hoje = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+
+function toast(texto, erro = false) {
+  const t = document.createElement("div");
+  t.className = "toast" + (erro ? " erro" : "");
+  t.append(icone(erro ? "close" : "check"), document.createTextNode(texto));
+  $("#toasts").append(t);
+  setTimeout(() => { t.style.opacity = "0"; t.style.transition = "opacity .3s"; }, 2200);
+  setTimeout(() => t.remove(), 2600);
+}
+
+// ---------- carregar ----------
+async function load() {
+  const r = await fetch("/api/errors");
+  if (!r.ok) return;
+  items = await r.json();
+  fillInstances();
+  render();
+  atualizarContadores();
+}
+
+function fillInstances() {
+  const sel = $("#instance");
+  const atual = sel.value;
+  const nomes = [...new Set(items.map((i) => i.instance).filter(Boolean))].sort();
+  sel.replaceChildren(new Option("Todas as instâncias", ""));
+  nomes.forEach((n) => sel.add(new Option(n, n)));
+  if (nomes.includes(atual)) sel.value = atual;
+}
+
+function visiveis() {
+  const inst = $("#instance").value;
+  const urg = $("#urgency").value;
+  const q = $("#q").value.trim().toLowerCase();
+  const lista = items.filter((i) =>
+    (!inst || i.instance === inst) &&
+    (!urg || (urg === "sem" ? !i.urgency : i.urgency === urg)) &&
+    (!q || `${i.text} ${i.workflow || ""} ${i.node || ""} ${i.instance || ""}`.toLowerCase().includes(q))
+  );
+  if ($("#order").value === "urgency") {
+    const peso = { alta: 0, media: 1, baixa: 2 };
+    lista.sort((a, b) => (peso[a.urgency] ?? 3) - (peso[b.urgency] ?? 3) || b.createdAt.localeCompare(a.createdAt));
+  }
+  return lista;
+}
+
+// ---------- montar o quadro ----------
+function render() {
+  const lista = visiveis();
+  const board = $("#board");
+  board.replaceChildren();
+
+  for (const s of STATUS) {
+    const col = document.createElement("section");
+    col.className = "col";
+    col.dataset.status = s.id;
+
+    const h = document.createElement("h2");
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = s.cor;
+    dot.style.boxShadow = `0 0 10px ${s.cor}99`;
+    const n = document.createElement("span");
+    n.className = "n";
+    const doStatus = lista.filter((i) => statusDe(i) === s.id);
+    n.textContent = doStatus.length;
+    h.append(dot, document.createTextNode(s.nome), n);
+
+    const stack = document.createElement("div");
+    stack.className = "stack";
+    stack.id = `col-${s.id}`;
+    if (doStatus.length) doStatus.forEach((i) => stack.append(card(i)));
+    else stack.append(vazio());
+
+    col.append(h, stack);
+    board.append(col);
+  }
+}
+
+function vazio() {
+  const d = document.createElement("div");
+  d.className = "empty";
+  d.textContent = "Nada aqui.";
+  return d;
+}
+
+function garantirPlaceholder(stack) {
+  const cards = stack.querySelectorAll(".card");
+  const ph = stack.querySelector(".empty");
+  if (cards.length && ph) ph.remove();
+  if (!cards.length && !ph) stack.append(vazio());
+}
+
+// ---------- card ----------
+function card(i) {
+  const el = document.createElement("article");
+  el.className = "card";
+  el.dataset.id = i.id;
+
+  const top = document.createElement("div");
+  top.className = "top";
+  const inst = document.createElement("span");
+  inst.className = "inst";
+  inst.textContent = i.instance || "sem instância";
+  top.append(inst);
+  if (i.urgency) {
+    const u = document.createElement("span");
+    u.className = "urg " + i.urgency;
+    u.textContent = i.urgency;
+    top.append(u);
+  }
+  const when = document.createElement("span");
+  when.className = "when";
+  when.textContent = fmt(i.createdAt);
+  top.append(when);
+  el.append(top);
+
+  if (i.workflow) {
+    const wf = document.createElement("div");
+    wf.className = "wf";
+    wf.textContent = i.workflow;
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = [i.node && `nó: ${i.node}`, i.tipo].filter(Boolean).join(" · ");
+    el.append(wf, sub);
+  }
+
+  const err = document.createElement("div");
+  err.className = "err" + (i.errorMsg ? "" : " blank");
+  err.textContent = i.errorMsg || "sem mensagem de erro";
+  el.append(err);
+
+  if (i.aiSuggestion) {
+    const ia = document.createElement("div");
+    ia.className = "ia";
+    const lbl = document.createElement("span");
+    lbl.className = "lbl";
+    lbl.append(icone("sparkle", 12), document.createTextNode("Sugestão da IA"));
+    const body = document.createElement("div");
+    body.className = "body";
+    body.innerHTML = md(i.aiSuggestion);
+    ia.append(lbl, body);
+    if (i.aiSuggestion.length > 300) {
+      body.classList.add("clamp");
+      const mais = document.createElement("button");
+      mais.className = "ghost sm";
+      mais.style.marginTop = "6px";
+      mais.textContent = "ver tudo";
+      mais.onclick = () => {
+        const fechado = body.classList.toggle("clamp");
+        mais.textContent = fechado ? "ver tudo" : "recolher";
+      };
+      ia.append(mais);
+    }
+    el.append(ia);
+  } else {
+    const ia = document.createElement("div");
+    ia.className = "ia pending";
+    const b = document.createElement("button");
+    b.className = "ghost sm";
+    rotulo(b, "sparkle", "Analisar com IA");
+    b.onclick = async () => {
+      b.disabled = true;
+      b.replaceChildren(icone("refresh"), document.createTextNode("Analisando…"));
+      b.querySelector("svg").classList.add("spin");
+      try {
+        await api(`/api/errors/${i.id}/analyze`, "POST");
+        toast("Análise pronta");
+        await load();
+      } catch (e) {
+        toast(e.message, true);
+        b.disabled = false;
+        rotulo(b, "sparkle", "Analisar com IA");
+      }
+    };
+    ia.append(b);
+    el.append(ia);
+  }
+
+  if (i.url) {
+    const a = document.createElement("a");
+    a.className = "link-mini";
+    a.href = i.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.append(icone("external", 12), document.createTextNode("abrir workflow"));
+    el.append(a);
+  }
+
+  const full = document.createElement("div");
+  full.className = "fulltext";
+  full.textContent = i.text;
+  el.append(full);
+
+  // status
+  const statusRow = document.createElement("div");
+  statusRow.className = "statusrow";
+  const sel = document.createElement("select");
+  sel.className = "status-sel";
+  STATUS.forEach((s) => sel.add(new Option(s.nome, s.id)));
+  sel.value = statusDe(i);
+  statusRow.append(sel);
+  el.append(statusRow);
+
+  // descrição + ferramentas
+  const ta = document.createElement("textarea");
+  ta.placeholder = "Descreva a correção realizada…";
+  ta.value = i.resolution || "";
+  el.append(ta);
+
+  const rec = document.createElement("div");
+  rec.className = "rec";
+  const recTop = document.createElement("div");
+  recTop.className = "rec-top";
+  const ondas = document.createElement("span");
+  ondas.className = "ondas";
+  for (let k = 0; k < 5; k++) ondas.append(document.createElement("i"));
+  const recTxt = document.createElement("span");
+  recTxt.textContent = "Gravando… fale normalmente";
+  recTop.append(ondas, recTxt);
+  const live = document.createElement("div");
+  live.className = "live";
+  rec.append(recTop, live);
+  el.append(rec);
+
+  const tools = document.createElement("div");
+  tools.className = "tools";
+
+  const mic = document.createElement("button");
+  mic.className = "ghost sm";
+  mic.type = "button";
+  rotulo(mic, "mic", "Falar");
+  mic.onclick = () => alternarGravacao(mic, ta, rec, live);
+
+  const iaBtn = document.createElement("button");
+  iaBtn.className = "ghost sm";
+  iaBtn.type = "button";
+  rotulo(iaBtn, "sparkle", "Melhorar com IA");
+  iaBtn.onclick = async () => {
+    if (ta.value.trim().length < 10) return toast("Escreva ou dite um pouco mais", true);
+    iaBtn.disabled = true;
+    iaBtn.replaceChildren(icone("refresh"), document.createTextNode("Melhorando…"));
+    iaBtn.querySelector("svg").classList.add("spin");
+    try {
+      const d = await api(`/api/errors/${i.id}/improve`, "POST", { texto: ta.value });
+      ta.dataset.antes = ta.value;
+      ta.value = d.texto;
+      if (!tools.querySelector(".desfazer")) {
+        const undo = document.createElement("button");
+        undo.className = "ghost sm desfazer";
+        rotulo(undo, "undo", "Desfazer IA");
+        undo.onclick = () => {
+          if (ta.dataset.antes) ta.value = ta.dataset.antes;
+          undo.remove();
+        };
+        tools.append(undo);
+      }
+      toast("Texto melhorado — revise e salve");
+    } catch (e) {
+      toast(e.message, true);
+    } finally {
+      iaBtn.disabled = false;
+      rotulo(iaBtn, "sparkle", "Melhorar com IA");
+    }
+  };
+
+  tools.append(mic, iaBtn);
+  el.append(tools);
+
+  const salvar = document.createElement("button");
+  salvar.className = "primary salvar";
+  rotulo(salvar, "save", "Salvar");
+  el.append(salvar);
+
+  const salvarAgora = async (novoStatus) => {
+    salvar.disabled = sel.disabled = true;
+    const txtOriginal = salvar.textContent;
+    salvar.replaceChildren(icone("refresh"), document.createTextNode("Salvando…"));
+    salvar.querySelector("svg").classList.add("spin");
+    try {
+      const atualizado = await api(`/api/errors/${i.id}`, "PATCH", {
+        status: novoStatus ?? sel.value,
+        resolution: ta.value,
+      });
+      moverCard(el, atualizado);
+      toast(jaConcluido(atualizado) ? "Salvo e avisado no grupo" : "Salvo");
+    } catch (e) {
+      toast(e.message, true);
+      salvar.disabled = sel.disabled = false;
+    } finally {
+      salvar.replaceChildren(icone("save"), document.createTextNode(txtOriginal));
+    }
+  };
+
+  salvar.onclick = () => salvarAgora();
+
+  // nada é enviado ao trocar o status: só marca que há alteração pendente
+  const dica = document.createElement("div");
+  dica.className = "dica";
+  dica.textContent = "alteração não salva — clique em Salvar";
+  const marcarSujo = () => {
+    const mudou = sel.value !== statusDe(i) || (ta.value || "").trim() !== (i.resolution || "").trim();
+    if (mudou) el.append(dica);
+    else dica.remove();
+  };
+  sel.onchange = marcarSujo;
+  ta.addEventListener("input", marcarSujo);
+
+  if (i.doneAt) {
+    const info = document.createElement("div");
+    info.className = "doneinfo";
+    info.append(icone("clock", 12), document.createTextNode(`${fmt(i.doneAt)}${i.doneBy ? ` · ${i.doneBy}` : ""}`));
+    el.append(info);
+  }
+  if (Array.isArray(i.history) && i.history.length) {
+    const h = document.createElement("details");
+    h.className = "hist";
+    const s = document.createElement("summary");
+    s.textContent = `histórico (${i.history.length})`;
+    const box = document.createElement("div");
+    box.className = "text";
+    box.textContent = i.history.slice().reverse()
+      .map((x) => `${fmt(x.at)} — ${nomeStatus(x.status)}${x.resolution ? `\n   ${x.resolution}` : ""}`)
+      .join("\n\n");
+    h.append(s, box);
+    el.append(h);
+  }
+  return el;
+}
+
+const jaConcluido = (i) => ["fixed", "resolved"].includes(statusDe(i));
+const nomeStatus = (id) => (STATUS.find((s) => s.id === id) || {}).nome || id || "—";
+
+// troca o card de coluna sem recarregar a página
+function moverCard(elAntigo, atualizado) {
+  const idx = items.findIndex((x) => x.id === atualizado.id);
+  if (idx >= 0) items[idx] = atualizado;
+
+  const destino = document.querySelector(`#col-${statusDe(atualizado)}`);
+  const origem = elAntigo.parentElement;
+  elAntigo.remove();
+  if (origem) garantirPlaceholder(origem);
+
+  const novo = card(atualizado);
+  novo.classList.add("entrando");
+  destino.append(novo);
+  garantirPlaceholder(destino);
+  novo.classList.add("salvo");
+  setTimeout(() => novo.classList.remove("salvo", "entrando"), 1000);
+
+  document.querySelectorAll(".col").forEach((col) => {
+    const n = col.querySelector("h2 .n");
+    if (n) n.textContent = col.querySelectorAll(".card").length;
+  });
+  atualizarContadores();
+}
+
+function atualizarContadores() {
+  const abertos = items.filter((i) => !jaConcluido(i)).length;
+  $("#nPending").textContent = abertos;
+  $("#nDone").textContent = items.length - abertos;
+}
+
+async function api(url, metodo = "GET", corpo) {
+  const r = await fetch(url, {
+    method: metodo,
+    headers: corpo ? { "content-type": "application/json" } : undefined,
+    body: corpo ? JSON.stringify(corpo) : undefined,
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || `falha (${r.status})`);
+  return d;
+}
+
+// ---------- gravação de voz ----------
+let sessao = null;
+
+async function alternarGravacao(botao, campo, rec, live) {
+  if (sessao) {
+    sessao.parar();
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    return toast("Este navegador não grava áudio. Use Chrome ou Edge.", true);
+  }
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    return toast("Microfone bloqueado: " + e.message, true);
+  }
+
+  const pedacos = [];
+  const rec1 = new MediaRecorder(stream);
+  const textoAntes = campo.value.trim();
+  let vivo = "";
+
+  botao.classList.add("mic-on");
+  rotulo(botao, "stop", "Parar");
+  rec.classList.add("on");
+
+  // transcrição ao vivo (Chrome/Edge); o Whisper corrige ao final
+  const Recon = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let sr = null;
+  if (Recon) {
+    sr = new Recon();
+    sr.lang = "pt-BR";
+    sr.continuous = true;
+    sr.interimResults = true;
+    sr.onresult = (ev) => {
+      let parcial = "";
+      for (let k = ev.resultIndex; k < ev.results.length; k++) {
+        const t = ev.results[k][0].transcript;
+        if (ev.results[k].isFinal) vivo += t + " ";
+        else parcial += t;
+      }
+      live.replaceChildren(
+        document.createTextNode(vivo.trim() ? vivo.trim() + " " : ""),
+        Object.assign(document.createElement("span"), { className: "parcial", textContent: parcial })
+      );
+      live.scrollTop = live.scrollHeight;
+    };
+    sr.onerror = () => {};
+    try { sr.start(); } catch {}
+  } else {
+    live.textContent = "Este navegador não mostra a fala ao vivo; ao parar, o texto aparece.";
+  }
+
+  rec1.ondataavailable = (e) => e.data.size && pedacos.push(e.data);
+  rec1.onstop = async () => {
+    stream.getTracks().forEach((t) => t.stop());
+    sessao = null;
+    if (sr) { try { sr.stop(); } catch {} }
+    botao.classList.remove("mic-on");
+    botao.disabled = true;
+    rotulo(botao, "refresh", "Transcrevendo…");
+    botao.querySelector("svg").classList.add("spin");
+
+    let texto = "";
+    try {
+      const blob = new Blob(pedacos, { type: rec1.mimeType || "audio/webm" });
+      const d = await apiPostAudio(blob);
+      texto = d.texto;
+    } catch (e) {
+      texto = vivo.trim();
+      if (!texto) toast("Transcrição falhou: " + e.message, true);
+    }
+
+    if (texto) {
+      campo.value = [textoAntes, texto].filter(Boolean).join(" ");
+      toast("Transcrito — revise antes de salvar");
+    }
+    rec.classList.remove("on");
+    live.replaceChildren();
+    botao.disabled = false;
+    rotulo(botao, "mic", "Falar");
+  };
+  rec1.start();
+  sessao = { parar: () => { if (rec1.state !== "inactive") rec1.stop(); } };
+}
+
+async function apiPostAudio(blob) {
+  const r = await fetch("/api/transcribe", {
+    method: "POST",
+    headers: { "content-type": blob.type || "audio/webm" },
+    body: blob,
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || "falha na transcrição");
+  return d;
+}
+
+// ---------- relatório ----------
+async function carregarRelatorio(data) {
+  const d = data || $("#dataRelatorio").value || hoje();
+  $("#dataRelatorio").value = d;
+  const j = await api(`/api/report?date=${encodeURIComponent(d)}`);
+  $("#textoRelatorio").value = j.texto || "";
+}
+
+$("#abrirRelatorio").onclick = () => {
+  if (!$("#dataRelatorio").value) $("#dataRelatorio").value = hoje();
+  $("#overlayRelatorio").classList.add("aberto");
+  carregarRelatorio();
+};
+$("#fecharRelatorio").onclick = () => $("#overlayRelatorio").classList.remove("aberto");
+$("#overlayRelatorio").addEventListener("click", (e) => {
+  if (e.target.id === "overlayRelatorio") $("#overlayRelatorio").classList.remove("aberto");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") $("#overlayRelatorio").classList.remove("aberto");
+});
+$("#atualizarRelatorio").onclick = () => carregarRelatorio($("#dataRelatorio").value);
+$("#dataRelatorio").addEventListener("change", () => carregarRelatorio($("#dataRelatorio").value));
+$("#copiarRelatorio").onclick = async (e) => {
+  const ta = $("#textoRelatorio");
+  try {
+    await navigator.clipboard.writeText(ta.value);
+  } catch {
+    ta.focus();
+    ta.select();
+    document.execCommand("copy");
+  }
+  const b = e.currentTarget;
+  b.replaceChildren(icone("check"), document.createTextNode("Copiado"));
+  toast("Relatório copiado — cole no WhatsApp");
+  setTimeout(() => rotulo(b, "copy", "Copiar relatório"), 2000);
+};
+
+// ---------- barra ----------
+rotulo($("#analyzeAll"), "sparkle", "Analisar todos");
+rotulo($("#abrirRelatorio"), "chart", "Relatório");
+rotulo($("#reload"), "refresh", "Atualizar");
+rotulo($("#fecharRelatorio"), "close", "Fechar");
+rotulo($("#copiarRelatorio"), "copy", "Copiar relatório");
+rotulo($("#atualizarRelatorio"), "refresh", "Atualizar");
+
+$("#analyzeAll").onclick = async (e) => {
+  const btn = e.currentTarget;
+  if (!confirm("Analisar todos os erros abertos com a IA? Nada é alterado no n8n, só leitura.")) return;
+  btn.disabled = true;
+  btn.replaceChildren(icone("refresh"), document.createTextNode("Analisando…"));
+  btn.querySelector("svg").classList.add("spin");
+  try {
+    const d = await api("/api/analyze-all", "POST");
+    toast(`${d.analisados} analisados${d.falhas.length ? ` · ${d.falhas.length} falhas` : ""}`, d.falhas.length > 0);
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    rotulo(btn, "sparkle", "Analisar todos");
+    await load();
+  }
+};
+
+$("#reload").onclick = async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  btn.replaceChildren(icone("refresh"), document.createTextNode("Atualizando…"));
+  btn.querySelector("svg").classList.add("spin");
+  await load();
+  btn.disabled = false;
+  rotulo(btn, "refresh", "Atualizar");
+  toast("Atualizado");
+};
+
+let timer;
+$("#q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(render, 160); });
+$("#instance").addEventListener("change", render);
+$("#urgency").addEventListener("change", render);
+$("#order").addEventListener("change", render);
+
+load();
+</script>
+</body>
+</html>
